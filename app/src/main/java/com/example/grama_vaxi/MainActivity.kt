@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.Agriculture
 import androidx.compose.material.icons.filled.Apartment
 import androidx.compose.material.icons.filled.MedicalServices
 import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
@@ -45,12 +46,20 @@ import com.example.grama_vaxi.ui.theme.GramaVaxiTheme
 import com.example.grama_vaxi.ui.theme.LightBg
 import com.example.grama_vaxi.ui.theme.OrangeMain
 
+import com.example.grama_vaxi.ui.screens.LoginScreen
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+
+import com.example.grama_vaxi.ui.screens.ProfileScreen
+import com.example.grama_vaxi.ui.screens.ThemeViewModel
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            GramaVaxiTheme {
+            val themeViewModel: ThemeViewModel = viewModel()
+            GramaVaxiTheme(darkTheme = themeViewModel.isDarkTheme) {
                 val permissionLauncher = rememberLauncherForActivityResult(
                     contract = ActivityResultContracts.RequestPermission()
                 ) { _ -> }
@@ -67,12 +76,61 @@ class MainActivity : ComponentActivity() {
                 val viewModel: AnimalViewModel = viewModel(
                     factory = AnimalViewModelFactory(application.repository, application)
                 )
+                
+                val auth = FirebaseAuth.getInstance()
+                val firestore = FirebaseFirestore.getInstance()
+                var userRole by remember { mutableStateOf<String?>(null) }
+                
+                val currentUser = auth.currentUser
+                val startDestination = if (currentUser != null) {
+                    // We'll determine the actual destination after fetching role
+                    "loading"
+                } else {
+                    Screen.Login.route
+                }
+
+                LaunchedEffect(currentUser) {
+                    if (currentUser != null) {
+                        firestore.collection("users").document(currentUser.uid).get()
+                            .addOnSuccessListener { doc ->
+                                userRole = doc.getString("role") ?: "Farmer"
+                                // Navigate based on role if we were on loading
+                                if (navController.currentDestination?.route == "loading") {
+                                    val route = when (userRole) {
+                                        "Vet" -> Screen.VetDashboard.route
+                                        "Admin" -> Screen.AdminDashboard.route
+                                        else -> Screen.Farmer.route
+                                    }
+                                    navController.navigate(route) {
+                                        popUpTo("loading") { inclusive = true }
+                                    }
+                                }
+                            }
+                    }
+                }
 
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = LightBg
                 ) {
-                    NavHost(navController = navController, startDestination = Screen.Home.route) {
+                    NavHost(navController = navController, startDestination = startDestination) {
+                        composable("loading") {
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                CircularProgressIndicator(color = OrangeMain)
+                            }
+                        }
+                        composable(Screen.Login.route) {
+                            LoginScreen(onLoginSuccess = { role ->
+                                val route = when (role) {
+                                    "Vet" -> Screen.VetDashboard.route
+                                    "Admin" -> Screen.AdminDashboard.route
+                                    else -> Screen.Farmer.route
+                                }
+                                navController.navigate(route) {
+                                    popUpTo(Screen.Login.route) { inclusive = true }
+                                }
+                            })
+                        }
                         composable(Screen.Home.route) {
                             HomeScreen(
                                 onFarmerClick = { navController.navigate(Screen.Farmer.route) },
@@ -85,7 +143,8 @@ class MainActivity : ComponentActivity() {
                                 viewModel = viewModel,
                                 onNavigateBack = { navController.popBackStack() },
                                 onAddAnimalClick = { navController.navigate(Screen.RegisterAnimal.route) },
-                                onReportDiseaseClick = { navController.navigate(Screen.ReportDisease.route) }
+                                onReportDiseaseClick = { navController.navigate(Screen.ReportDisease.route) },
+                                onProfileClick = { navController.navigate(Screen.Profile.route) }
                             )
                         }
                         composable(Screen.RegisterAnimal.route) {
@@ -101,12 +160,25 @@ class MainActivity : ComponentActivity() {
                         }
                         composable(Screen.VetDashboard.route) {
                             VetDashboardScreen(
-                                onNavigateBack = { navController.popBackStack() }
+                                onNavigateBack = { navController.popBackStack() },
+                                onProfileClick = { navController.navigate(Screen.Profile.route) }
                             )
                         }
                         composable(Screen.AdminDashboard.route) {
                             AdminDashboardScreen(
-                                onNavigateBack = { navController.popBackStack() }
+                                onNavigateBack = { navController.popBackStack() },
+                                onProfileClick = { navController.navigate(Screen.Profile.route) }
+                            )
+                        }
+                        composable(Screen.Profile.route) {
+                            ProfileScreen(
+                                themeViewModel = themeViewModel,
+                                onNavigateBack = { navController.popBackStack() },
+                                onLogout = {
+                                    navController.navigate(Screen.Login.route) {
+                                        popUpTo(0) { inclusive = true }
+                                    }
+                                }
                             )
                         }
                     }

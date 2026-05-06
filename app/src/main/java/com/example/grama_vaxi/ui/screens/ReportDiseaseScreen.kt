@@ -15,6 +15,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.grama_vaxi.ui.theme.LightBg
 import com.example.grama_vaxi.ui.theme.OrangeMain
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -22,6 +24,10 @@ fun ReportDiseaseScreen(onNavigateBack: () -> Unit) {
     var description by remember { mutableStateOf("") }
     var location by remember { mutableStateOf("") }
     var submitted by remember { mutableStateOf(false) }
+    var isLoading by remember { mutableStateOf(false) }
+
+    val firestore = FirebaseFirestore.getInstance()
+    val auth = FirebaseAuth.getInstance()
 
     Scaffold(
         topBar = {
@@ -90,16 +96,40 @@ fun ReportDiseaseScreen(onNavigateBack: () -> Unit) {
                 Spacer(modifier = Modifier.weight(1f))
 
                 Button(
-                    onClick = { submitted = true },
+                    onClick = {
+                        if (description.isNotBlank() && location.isNotBlank()) {
+                            isLoading = true
+                            val report = hashMapOf(
+                                "description" to description,
+                                "location" to location,
+                                "farmerEmail" to (auth.currentUser?.email ?: "Anonymous"),
+                                "timestamp" to System.currentTimeMillis()
+                            )
+                            firestore.collection("reports")
+                                .add(report)
+                                .addOnSuccessListener {
+                                    isLoading = false
+                                    submitted = true
+                                }
+                                .addOnFailureListener {
+                                    isLoading = false
+                                }
+                        }
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
-                    shape = RoundedCornerShape(16.dp)
+                    shape = RoundedCornerShape(16.dp),
+                    enabled = !isLoading
                 ) {
-                    Icon(Icons.Default.Send, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("REPORT EMERGENCY (ತುರ್ತು ವರದಿ)", fontWeight = FontWeight.Bold)
+                    if (isLoading) {
+                        CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                    } else {
+                        Icon(Icons.Default.Send, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("REPORT EMERGENCY (ತುರ್ತು ವರದಿ)", fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         }

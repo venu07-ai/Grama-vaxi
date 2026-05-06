@@ -8,6 +8,9 @@ import androidx.work.WorkManager
 import com.example.grama_vaxi.data.Animal
 import com.example.grama_vaxi.data.AnimalRepository
 import com.example.grama_vaxi.worker.VaccineReminderWorker
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.storage.FirebaseStorage
+import android.net.Uri
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
@@ -20,6 +23,8 @@ class AnimalViewModel(
 ) : AndroidViewModel(application) {
 
     private val workManager = WorkManager.getInstance(application)
+    private val firestore = FirebaseFirestore.getInstance()
+    private val storage = FirebaseStorage.getInstance()
 
     val allAnimals: StateFlow<List<Animal>> = repository.getAllAnimals()
         .stateIn(
@@ -35,9 +40,48 @@ class AnimalViewModel(
                 lastVaccinationDate = System.currentTimeMillis(),
                 nextVaccinationDate = nextShotDate
             )
+            
+            // Sync to Firebase
+            syncAnimalToFirebase(animalWithDates)
+            
             repository.insertAnimal(animalWithDates)
             scheduleVaccineReminder(animalWithDates)
         }
+    }
+
+    private fun syncAnimalToFirebase(animal: Animal) {
+        val animalMap = hashMapOf(
+            "name" to animal.name,
+            "breed" to animal.breed,
+            "age" to animal.age,
+            "species" to animal.species,
+            "lastVaccinationDate" to animal.lastVaccinationDate,
+            "nextVaccinationDate" to animal.nextVaccinationDate,
+            "timestamp" to System.currentTimeMillis()
+        )
+
+        firestore.collection("animals")
+            .add(animalMap)
+            .addOnSuccessListener { documentReference ->
+                animal.photoUri?.let { uriString ->
+                    try {
+                        uploadPhotoToStorage(documentReference.id, Uri.parse(uriString))
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+            }
+    }
+
+    private fun uploadPhotoToStorage(animalId: String, fileUri: Uri) {
+        val photoRef = storage.reference.child("animal_photos/$animalId.jpg")
+        photoRef.putFile(fileUri)
+            .addOnSuccessListener {
+                photoRef.downloadUrl.addOnSuccessListener { downloadUri ->
+                    firestore.collection("animals").document(animalId)
+                        .update("photoUrl", downloadUri.toString())
+                }
+            }
     }
 
     private fun scheduleVaccineReminder(animal: Animal) {

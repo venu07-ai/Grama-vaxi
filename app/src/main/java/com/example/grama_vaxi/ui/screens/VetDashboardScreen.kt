@@ -8,6 +8,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.HealthAndSafety
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -20,9 +21,32 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.grama_vaxi.ui.theme.LightBg
 
+import androidx.compose.runtime.*
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Query
+
+data class DiseaseReport(
+    val description: String = "",
+    val location: String = "",
+    val timestamp: Long = 0L
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun VetDashboardScreen(onNavigateBack: () -> Unit) {
+fun VetDashboardScreen(onNavigateBack: () -> Unit, onProfileClick: () -> Unit) {
+    var reports by remember { mutableStateOf<List<DiseaseReport>>(emptyList()) }
+    val firestore = FirebaseFirestore.getInstance()
+
+    LaunchedEffect(Unit) {
+        firestore.collection("reports")
+            .orderBy("timestamp", Query.Direction.DESCENDING)
+            .addSnapshotListener { snapshot, error ->
+                if (error == null && snapshot != null) {
+                    reports = snapshot.toObjects(DiseaseReport::class.java)
+                }
+            }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -30,6 +54,11 @@ fun VetDashboardScreen(onNavigateBack: () -> Unit) {
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = onProfileClick) {
+                        Icon(Icons.Default.Person, contentDescription = "Profile")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
@@ -54,8 +83,8 @@ fun VetDashboardScreen(onNavigateBack: () -> Unit) {
 
             // Stats Cards
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                StatCard("Animals", "124", Color(0xFF4CAF50), Modifier.weight(1f))
-                StatCard("Vaccinated", "88", Color(0xFF2196F3), Modifier.weight(1f))
+                StatCard("Reports", reports.size.toString(), Color(0xFF4CAF50), Modifier.weight(1f))
+                StatCard("Urgent", reports.size.toString(), Color(0xFFF44336), Modifier.weight(1f))
             }
             
             Spacer(modifier = Modifier.height(24.dp))
@@ -70,8 +99,8 @@ fun VetDashboardScreen(onNavigateBack: () -> Unit) {
             Spacer(modifier = Modifier.height(12.dp))
 
             LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                items(listOf("Sick Sheep at Temple Square", "Goat showing fever symptoms")) { report ->
-                    AlertItem(report)
+                items(reports) { report ->
+                    AlertItem("${report.description} @ ${report.location}")
                 }
             }
         }

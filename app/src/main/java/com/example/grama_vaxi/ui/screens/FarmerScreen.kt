@@ -36,7 +36,8 @@ fun FarmerScreen(
     viewModel: AnimalViewModel,
     onNavigateBack: () -> Unit,
     onAddAnimalClick: () -> Unit,
-    onReportDiseaseClick: () -> Unit
+    onReportDiseaseClick: () -> Unit,
+    onProfileClick: () -> Unit
 ) {
     val animals by viewModel.allAnimals.collectAsState()
 
@@ -52,6 +53,9 @@ fun FarmerScreen(
                 actions = {
                     IconButton(onClick = onReportDiseaseClick) {
                         Icon(Icons.Default.NotificationImportant, contentDescription = "Report Disease", tint = Color.Red)
+                    }
+                    IconButton(onClick = onProfileClick) {
+                        Icon(Icons.Default.Person, contentDescription = "Profile")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
