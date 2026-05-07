@@ -19,9 +19,45 @@ import androidx.compose.ui.unit.sp
 import com.example.grama_vaxi.ui.theme.LightBg
 import com.example.grama_vaxi.ui.theme.OrangeMain
 
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.runtime.*
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Query
+
+data class Camp(
+    val title: String = "",
+    val date: String = "",
+    val time: String = "",
+    val location: String = "",
+    val description: String = "",
+    val timestamp: Long = 0L
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdminDashboardScreen(onNavigateBack: () -> Unit, onProfileClick: () -> Unit) {
+    var showDialog by remember { mutableStateOf(false) }
+    var camps by remember { mutableStateOf<List<Camp>>(emptyList()) }
+    val firestore = FirebaseFirestore.getInstance()
+
+    // Form State
+    var title by remember { mutableStateOf("") }
+    var date by remember { mutableStateOf("") }
+    var time by remember { mutableStateOf("") }
+    var location by remember { mutableStateOf("") }
+    var description by remember { mutableStateOf("") }
+
+    LaunchedEffect(Unit) {
+        firestore.collection("camps")
+            .orderBy("timestamp", Query.Direction.DESCENDING)
+            .addSnapshotListener { snapshot, error ->
+                if (error == null && snapshot != null) {
+                    camps = snapshot.toObjects(Camp::class.java)
+                }
+            }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -41,7 +77,7 @@ fun AdminDashboardScreen(onNavigateBack: () -> Unit, onProfileClick: () -> Unit)
         },
         floatingActionButton = {
             ExtendedFloatingActionButton(
-                onClick = { /* TODO: Schedule Camp */ },
+                onClick = { showDialog = true },
                 containerColor = OrangeMain,
                 contentColor = Color.White,
                 icon = { Icon(Icons.Default.Add, contentDescription = null) },
@@ -64,9 +100,65 @@ fun AdminDashboardScreen(onNavigateBack: () -> Unit, onProfileClick: () -> Unit)
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            CampCard("Temple Square Camp", "Oct 25, 2024", "Status: In Progress")
-            Spacer(modifier = Modifier.height(12.dp))
-            CampCard("Village School Ground", "Nov 02, 2024", "Status: Scheduled")
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                items(camps) { camp ->
+                    CampCard(camp.title, "${camp.date} at ${camp.time}", "Location: ${camp.location}")
+                }
+            }
+        }
+
+        if (showDialog) {
+            AlertDialog(
+                onDismissRequest = { showDialog = false },
+                title = { Text("Schedule New Camp", fontWeight = FontWeight.Bold) },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text("Title") })
+                        OutlinedTextField(value = date, onValueChange = { date = it }, label = { Text("Date (e.g. Oct 25)") })
+                        OutlinedTextField(value = time, onValueChange = { time = it }, label = { Text("Time (e.g. 10:00 AM)") })
+                        OutlinedTextField(value = location, onValueChange = { location = it }, label = { Text("Location") })
+                        OutlinedTextField(value = description, onValueChange = { description = it }, label = { Text("Description") })
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            if (title.isNotBlank() && date.isNotBlank()) {
+                                val campData = hashMapOf(
+                                    "title" to title,
+                                    "date" to date,
+                                    "time" to time,
+                                    "location" to location,
+                                    "description" to description,
+                                    "timestamp" to System.currentTimeMillis()
+                                )
+                                firestore.collection("camps").add(campData)
+                                    .addOnSuccessListener {
+                                        showDialog = false
+                                        // Send notification (simulated by adding to a notifications collection)
+                                        val notification = hashMapOf(
+                                            "title" to "New Camp: $title",
+                                            "message" to "Join us at $location on $date at $time",
+                                            "timestamp" to System.currentTimeMillis()
+                                        )
+                                        firestore.collection("notifications").add(notification)
+                                        
+                                        // Reset fields
+                                        title = ""; date = ""; time = ""; location = ""; description = ""
+                                    }
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = OrangeMain)
+                    ) {
+                        Text("SCHEDULE")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDialog = false }) {
+                        Text("CANCEL")
+                    }
+                }
+            )
         }
     }
 }

@@ -31,6 +31,10 @@ import com.example.grama_vaxi.ui.theme.OrangeMain
 import java.text.SimpleDateFormat
 import java.util.*
 
+import androidx.compose.runtime.*
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Query
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FarmerScreen(
@@ -41,9 +45,19 @@ fun FarmerScreen(
     onProfileClick: () -> Unit
 ) {
     val animals = viewModel.firebaseAnimals
+    var camps by remember { mutableStateOf<List<Camp>>(emptyList()) }
+    val firestore = FirebaseFirestore.getInstance()
 
     LaunchedEffect(Unit) {
         viewModel.fetchAnimalsForCurrentUser()
+        firestore.collection("camps")
+            .orderBy("timestamp", Query.Direction.DESCENDING)
+            .limit(3)
+            .addSnapshotListener { snapshot, error ->
+                if (error == null && snapshot != null) {
+                    camps = snapshot.toObjects(Camp::class.java)
+                }
+            }
     }
 
     Scaffold(
@@ -88,6 +102,38 @@ fun FarmerScreen(
                 .padding(padding),
             contentPadding = PaddingValues(16.dp)
         ) {
+            // Upcoming Camps Section
+            if (camps.isNotEmpty()) {
+                item {
+                    Text(
+                        text = "Upcoming Camps (ಮುಂಬರುವ ಶಿಬಿರಗಳು)",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 12.dp)
+                    )
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        items(camps) { camp ->
+                            Card(
+                                modifier = Modifier.width(250.dp),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color.White)
+                            ) {
+                                Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.Event, contentDescription = null, tint = OrangeMain)
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Column {
+                                        Text(camp.title, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                        Text("${camp.date} • ${camp.time}", fontSize = 12.sp, color = Color.Gray)
+                                        Text(camp.location, fontSize = 11.sp, color = OrangeMain)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(24.dp))
+                }
+            }
+
             // Vaccine Calendar Section
             item {
                 Text(
