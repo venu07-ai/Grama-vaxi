@@ -72,7 +72,7 @@ fun LoginScreen(onLoginSuccess: (String) -> Unit) {
             Spacer(modifier = Modifier.height(16.dp))
             Text("Select Role:", fontWeight = FontWeight.Bold, modifier = Modifier.align(Alignment.Start))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                listOf("Farmer", "Vet", "Admin").forEach { role ->
+                listOf("Farmer", "Veterinary Officer", "Admin").forEach { role ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         RadioButton(selected = selectedRole == role, onClick = { selectedRole = role })
                         Text(role)

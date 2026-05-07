@@ -8,6 +8,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -24,7 +25,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -208,15 +211,15 @@ fun HomeScreen(
         Surface(
             modifier = Modifier.size(110.dp),
             shape = RoundedCornerShape(32.dp),
-            color = OrangeMain,
+            color = Color.White,
             shadowElevation = 20.dp
         ) {
             Box(contentAlignment = Alignment.Center) {
-                Text(
-                    text = "G",
-                    color = Color.White,
-                    fontSize = 54.sp,
-                    fontWeight = FontWeight.Bold
+                Image(
+                    painter = painterResource(id = R.drawable.gemini_generated_image_58ld1w58ld1w58ld),
+                    contentDescription = "GramaVaxi Logo",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
                 )
             }
         }
