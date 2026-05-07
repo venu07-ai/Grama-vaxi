@@ -12,6 +12,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -39,7 +40,11 @@ fun FarmerScreen(
     onReportDiseaseClick: () -> Unit,
     onProfileClick: () -> Unit
 ) {
-    val animals by viewModel.allAnimals.collectAsState()
+    val animals = viewModel.firebaseAnimals
+
+    LaunchedEffect(Unit) {
+        viewModel.fetchAnimalsForCurrentUser()
+    }
 
     Scaffold(
         topBar = {
