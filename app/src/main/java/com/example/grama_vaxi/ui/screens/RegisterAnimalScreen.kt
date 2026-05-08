@@ -34,6 +34,7 @@ import com.example.grama_vaxi.ui.theme.OrangeMain
 @Composable
 fun RegisterAnimalScreen(
     viewModel: AnimalViewModel,
+    languageViewModel: LanguageViewModel,
     onNavigateBack: () -> Unit
 ) {
     var name by remember { mutableStateOf("") }
@@ -42,21 +43,28 @@ fun RegisterAnimalScreen(
     var selectedSpecies by remember { mutableStateOf("Sheep") }
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
 
+    val t = languageViewModel::t
+
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         selectedImageUri = uri
     }
 
-    val speciesList = listOf("Sheep (ಕುರಿ)", "Goat (ಮೇಕೆ)", "Cow (ಹಸು)", "Buffalo (ಎಮ್ಮೆ)")
+    val speciesList = listOf("Sheep", "Goat", "Cow", "Buffalo")
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Register Animal", fontWeight = FontWeight.Bold) },
+                title = { Text(t("Register Animal", "ಪ್ರಾಣಿ ನೋಂದಣಿ"), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    TextButton(onClick = { languageViewModel.toggleLanguage() }) {
+                        Text(if (languageViewModel.isKannada) "EN" else "ಕನ್ನಡ", color = OrangeMain, fontWeight = FontWeight.Bold)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
@@ -92,7 +100,7 @@ fun RegisterAnimalScreen(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(Icons.Default.AddAPhoto, contentDescription = null, tint = OrangeMain, modifier = Modifier.size(40.dp))
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text("Add Photo", fontSize = 12.sp, color = Color.Gray)
+                        Text(t("Add Photo", "ಫೋಟೋ ಸೇರಿಸಿ"), fontSize = 12.sp, color = Color.Gray)
                     }
                 }
             }
@@ -101,7 +109,7 @@ fun RegisterAnimalScreen(
 
             // Visual Species Selector
             Text(
-                "Select Animal Type",
+                t("Select Animal Type", "ಪ್ರಾಣಿ ಪ್ರಕಾರವನ್ನು ಆಯ್ಕೆ ಮಾಡಿ"),
                 modifier = Modifier.align(Alignment.Start),
                 fontWeight = FontWeight.SemiBold,
                 color = Color.Gray
@@ -112,11 +120,16 @@ fun RegisterAnimalScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 speciesList.take(2).forEach { species ->
-                    val isSelected = selectedSpecies == species.split(" ")[0]
+                    val speciesKn = when(species) {
+                        "Sheep" -> "ಕುರಿ"
+                        "Goat" -> "ಮೇಕೆ"
+                        else -> species
+                    }
+                    val isSelected = selectedSpecies == species
                     SpeciesCard(
-                        name = species,
+                        name = t(species, speciesKn),
                         isSelected = isSelected,
-                        onClick = { selectedSpecies = species.split(" ")[0] },
+                        onClick = { selectedSpecies = species },
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -127,11 +140,16 @@ fun RegisterAnimalScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 speciesList.drop(2).forEach { species ->
-                    val isSelected = selectedSpecies == species.split(" ")[0]
+                    val speciesKn = when(species) {
+                        "Cow" -> "ಹಸು"
+                        "Buffalo" -> "ಎಮ್ಮೆ"
+                        else -> species
+                    }
+                    val isSelected = selectedSpecies == species
                     SpeciesCard(
-                        name = species,
+                        name = t(species, speciesKn),
                         isSelected = isSelected,
-                        onClick = { selectedSpecies = species.split(" ")[0] },
+                        onClick = { selectedSpecies = species },
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -142,7 +160,7 @@ fun RegisterAnimalScreen(
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
-                label = { Text("Animal Name") },
+                label = { Text(t("Animal Name", "ಪ್ರಾಣಿಯ ಹೆಸರು")) },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp)
             )
@@ -152,7 +170,7 @@ fun RegisterAnimalScreen(
             OutlinedTextField(
                 value = breed,
                 onValueChange = { breed = it },
-                label = { Text("Breed") },
+                label = { Text(t("Breed", "ತಳಿ")) },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp)
             )
@@ -162,7 +180,7 @@ fun RegisterAnimalScreen(
             OutlinedTextField(
                 value = age,
                 onValueChange = { age = it },
-                label = { Text("Age in Years") },
+                label = { Text(t("Age in Years", "ವಯಸ್ಸು (ವರ್ಷಗಳಲ್ಲಿ)")) },
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 shape = RoundedCornerShape(12.dp)
@@ -191,7 +209,7 @@ fun RegisterAnimalScreen(
                 colors = ButtonDefaults.buttonColors(containerColor = OrangeMain),
                 shape = RoundedCornerShape(16.dp)
             ) {
-                Text("REGISTER (ನೋಂದಾಯಿಸಿ)", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Text(t("REGISTER", "ನೋಂದಾಯಿಸಿ"), fontSize = 18.sp, fontWeight = FontWeight.Bold)
             }
         }
     }

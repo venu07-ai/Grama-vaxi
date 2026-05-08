@@ -28,6 +28,7 @@ import coil.compose.AsyncImage
 import com.example.grama_vaxi.data.Animal
 import com.example.grama_vaxi.ui.theme.LightBg
 import com.example.grama_vaxi.ui.theme.OrangeMain
+import com.google.firebase.auth.FirebaseAuth
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -39,6 +40,7 @@ import com.google.firebase.firestore.Query
 @Composable
 fun FarmerScreen(
     viewModel: AnimalViewModel,
+    languageViewModel: LanguageViewModel,
     onNavigateBack: () -> Unit,
     onAddAnimalClick: () -> Unit,
     onReportDiseaseClick: () -> Unit,
@@ -46,10 +48,16 @@ fun FarmerScreen(
 ) {
     val animals = viewModel.firebaseAnimals
     var camps by remember { mutableStateOf<List<Camp>>(emptyList()) }
+    var userReports by remember { mutableStateOf<List<DiseaseReport>>(emptyList()) }
     val firestore = FirebaseFirestore.getInstance()
+    val auth = FirebaseAuth.getInstance()
+
+    val t = languageViewModel::t
 
     LaunchedEffect(Unit) {
         viewModel.fetchAnimalsForCurrentUser()
+        
+        // Fetch Camps
         firestore.collection("camps")
             .orderBy("timestamp", Query.Direction.DESCENDING)
             .limit(3)
@@ -58,18 +66,35 @@ fun FarmerScreen(
                     camps = snapshot.toObjects(Camp::class.java)
                 }
             }
+
+        // Fetch User's Emergency Reports
+        val currentUserEmail = auth.currentUser?.email
+        if (currentUserEmail != null) {
+            firestore.collection("reports")
+                .whereEqualTo("farmerEmail", currentUserEmail)
+                .orderBy("timestamp", Query.Direction.DESCENDING)
+                .addSnapshotListener { snapshot, error ->
+                    if (error == null && snapshot != null) {
+                        userReports = snapshot.toObjects(DiseaseReport::class.java)
+                    }
+                }
+        }
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Farmer Dashboard", fontWeight = FontWeight.Bold) },
+                title = { Text(t("Farmer Dashboard", "ರೈತರ ಡ್ಯಾಶ್‌ಬೋರ್ಡ್"), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 actions = {
+                    // Language Toggle
+                    TextButton(onClick = { languageViewModel.toggleLanguage() }) {
+                        Text(if (languageViewModel.isKannada) "EN" else "ಕನ್ನಡ", color = OrangeMain, fontWeight = FontWeight.Bold)
+                    }
                     IconButton(onClick = onReportDiseaseClick) {
                         Icon(Icons.Default.NotificationImportant, contentDescription = "Report Disease", tint = Color.Red)
                     }
@@ -90,7 +115,7 @@ fun FarmerScreen(
                 Row(modifier = Modifier.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.Add, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Register Animal", fontWeight = FontWeight.Bold)
+                    Text(t("Register Animal", "ಪ್ರಾಣಿ ನೋಂದಣಿ"), fontWeight = FontWeight.Bold)
                 }
             }
         },
@@ -106,7 +131,7 @@ fun FarmerScreen(
             if (camps.isNotEmpty()) {
                 item {
                     Text(
-                        text = "Upcoming Camps (ಮುಂಬರುವ ಶಿಬಿರಗಳು)",
+                        text = t("Upcoming Camps", "ಮುಂಬರುವ ಶಿಬಿರಗಳು"),
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(bottom = 12.dp)
@@ -137,19 +162,36 @@ fun FarmerScreen(
             // Vaccine Calendar Section
             item {
                 Text(
-                    text = "Vaccine Calendar (ಲಸಿಕೆ ಕ್ಯಾಲೆಂಡರ್)",
+                    text = t("Vaccine Calendar", "ಲಸಿಕೆ ಕ್ಯಾಲೆಂಡರ್"),
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(bottom = 12.dp)
                 )
-                VaccineCalendarRow(animals)
+                VaccineCalendarRow(animals, t)
                 Spacer(modifier = Modifier.height(24.dp))
+            }
+
+            // Emergency Responses Section
+            if (userReports.isNotEmpty()) {
+                item {
+                    Text(
+                        text = t("Emergency Status", "ತುರ್ತು ಸ್ಥಿತಿ"),
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 12.dp)
+                    )
+                }
+                items(userReports) { report ->
+                    EmergencyResponseCard(report, t)
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+                item { Spacer(modifier = Modifier.height(12.dp)) }
             }
 
             // Animal Ledger Section
             item {
                 Text(
-                    text = "Animal Ledger (ಪ್ರಾಣಿ ಪುಸ್ತಕ)",
+                    text = t("Animal Ledger", "ಪ್ರಾಣಿ ಪುಸ್ತಕ"),
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(bottom = 12.dp)
@@ -158,11 +200,11 @@ fun FarmerScreen(
 
             if (animals.isEmpty()) {
                 item {
-                    EmptyState()
+                    EmptyState(t)
                 }
             } else {
                 items(animals) { animal ->
-                    AnimalHealthCard(animal = animal)
+                    AnimalHealthCard(animal = animal, t)
                     Spacer(modifier = Modifier.height(12.dp))
                 }
             }
@@ -171,7 +213,7 @@ fun FarmerScreen(
 }
 
 @Composable
-fun VaccineCalendarRow(animals: List<Animal>) {
+fun VaccineCalendarRow(animals: List<Animal>, t: (String, String) -> String) {
     if (animals.isEmpty()) {
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -179,7 +221,7 @@ fun VaccineCalendarRow(animals: List<Animal>) {
             shape = RoundedCornerShape(16.dp)
         ) {
             Text(
-                "Register animals to see vaccination dates",
+                t("Register animals to see vaccination dates", "ಲಸಿಕೆ ದಿನಾಂಕಗಳನ್ನು ನೋಡಲು ಪ್ರಾಣಿಗಳನ್ನು ನೋಂದಾಯಿಸಿ"),
                 modifier = Modifier.padding(24.dp),
                 color = Color.Gray,
                 fontSize = 14.sp
@@ -208,7 +250,7 @@ fun VaccineCalendarRow(animals: List<Animal>) {
                         val dateStr = animal.nextVaccinationDate?.let {
                             SimpleDateFormat("MMM dd", Locale.getDefault()).format(Date(it))
                         } ?: "TBD"
-                        Text("Next: $dateStr", color = Color.White.copy(alpha = 0.8f), fontSize = 12.sp)
+                        Text("${t("Next", "ಮುಂದಿನ")}: $dateStr", color = Color.White.copy(alpha = 0.8f), fontSize = 12.sp)
                     }
                 }
             }
@@ -217,7 +259,42 @@ fun VaccineCalendarRow(animals: List<Animal>) {
 }
 
 @Composable
-fun AnimalHealthCard(animal: Animal) {
+fun EmergencyResponseCard(report: DiseaseReport, t: (String, String) -> String) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (report.doctorAdvice != null) Color(0xFFE8F5E9) else Color(0xFFFFF3E0)
+        )
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = if (report.doctorAdvice != null) Icons.Default.Chat else Icons.Default.Pending,
+                    contentDescription = null,
+                    tint = if (report.doctorAdvice != null) Color(0xFF2E7D32) else Color(0xFFE65100)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = if (report.doctorAdvice != null) t("Advice Received", "ಸಲಹೆ ಬಂದಿದೆ") else t("Waiting for Vet...", "ವೈದ್ಯರಿಗಾಗಿ ಕಾಯಲಾಗುತ್ತಿದೆ..."),
+                    fontWeight = FontWeight.Bold,
+                    color = if (report.doctorAdvice != null) Color(0xFF2E7D32) else Color(0xFFE65100)
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(text = "${t("Your Report", "ನಿಮ್ಮ ವರದಿ")}: ${report.description}", fontSize = 14.sp, maxLines = 2)
+            
+            if (report.doctorAdvice != null) {
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = Color.White.copy(alpha = 0.5f))
+                Text(text = t("Doctor's Advice:", "ವೈದ್ಯರ ಸಲಹೆ:"), fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text(text = report.doctorAdvice, fontSize = 14.sp, color = Color.Black)
+            }
+        }
+    }
+}
+
+@Composable
+fun AnimalHealthCard(animal: Animal, t: (String, String) -> String) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
@@ -269,7 +346,7 @@ fun AnimalHealthCard(animal: Animal) {
                 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(text = animal.name, fontWeight = FontWeight.ExtraBold, fontSize = 20.sp)
-                    Text(text = "${animal.breed} • ${animal.age} Years", color = Color.Gray, fontSize = 14.sp)
+                    Text(text = "${animal.breed} • ${animal.age} ${t("Years", "ವರ್ಷಗಳು")}", color = Color.Gray, fontSize = 14.sp)
                 }
                 
                 Surface(
@@ -277,7 +354,7 @@ fun AnimalHealthCard(animal: Animal) {
                     shape = RoundedCornerShape(10.dp)
                 ) {
                     Text(
-                        "HEALTHY",
+                        t("HEALTHY", "ಆರೋಗ್ಯಕರ"),
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                         color = Color(0xFF2E7D32),
                         fontSize = 10.sp,
@@ -287,22 +364,22 @@ fun AnimalHealthCard(animal: Animal) {
             }
             
             Spacer(modifier = Modifier.height(20.dp))
-            Divider(color = Color.LightGray.copy(alpha = 0.3f))
+            HorizontalDivider(color = Color.LightGray.copy(alpha = 0.3f))
             Spacer(modifier = Modifier.height(16.dp))
             
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Column {
-                    Text("Last Vaccination", fontSize = 11.sp, color = Color.Gray)
+                    Text(t("Last Vaccination", "ಹಿಂದಿನ ಲಸಿಕೆ"), fontSize = 11.sp, color = Color.Gray)
                     val lastDateStr = animal.lastVaccinationDate?.let {
                         SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(Date(it))
                     } ?: "N/A"
                     Text(lastDateStr, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 }
                 Column(horizontalAlignment = Alignment.End) {
-                    Text("Next Shot Due", fontSize = 11.sp, color = OrangeMain, fontWeight = FontWeight.Bold)
+                    Text(t("Next Shot Due", "ಮುಂದಿನ ಲಸಿಕೆ"), fontSize = 11.sp, color = OrangeMain, fontWeight = FontWeight.Bold)
                     val nextDateStr = animal.nextVaccinationDate?.let {
                         SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(Date(it))
-                    } ?: "Pending"
+                    } ?: t("Pending", "ಬಾಕಿ ಇದೆ")
                     Text(nextDateStr, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 }
             }
@@ -311,7 +388,7 @@ fun AnimalHealthCard(animal: Animal) {
 }
 
 @Composable
-fun EmptyState() {
+fun EmptyState(t: (String, String) -> String) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -326,12 +403,12 @@ fun EmptyState() {
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            "No animals in your ledger yet.",
+            t("No animals in your ledger yet.", "ನಿಮ್ಮ ಪುಸ್ತಕದಲ್ಲಿ ಇನ್ನೂ ಯಾವುದೇ ಪ್ರಾಣಿಗಳಿಲ್ಲ."),
             color = Color.Gray,
             fontWeight = FontWeight.Medium
         )
         Text(
-            "ಲಸಿಕೆ ವಿವರಗಳಿಗಾಗಿ ಪ್ರಾಣಿಗಳನ್ನು ಸೇರಿಸಿ",
+            t("Add animals for vaccine details", "ಲಸಿಕೆ ವಿವರಗಳಿಗಾಗಿ ಪ್ರಾಣಿಗಳನ್ನು ಸೇರಿಸಿ"),
             color = Color.Gray.copy(alpha = 0.6f),
             fontSize = 12.sp
         )

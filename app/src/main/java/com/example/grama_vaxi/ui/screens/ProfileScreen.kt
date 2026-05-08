@@ -10,6 +10,7 @@ import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -27,6 +28,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 @Composable
 fun ProfileScreen(
     themeViewModel: ThemeViewModel,
+    languageViewModel: LanguageViewModel,
     onNavigateBack: () -> Unit,
     onLogout: () -> Unit
 ) {
@@ -34,6 +36,8 @@ fun ProfileScreen(
     val firestore = FirebaseFirestore.getInstance()
     val currentUser = auth.currentUser
     var userRole by remember { mutableStateOf("Loading...") }
+
+    val t = languageViewModel::t
 
     LaunchedEffect(currentUser) {
         if (currentUser != null) {
@@ -47,7 +51,7 @@ fun ProfileScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Profile", fontWeight = FontWeight.Bold) },
+                title = { Text(t("Profile", "ಪ್ರೊಫೈಲ್"), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -82,12 +86,12 @@ fun ProfileScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = currentUser?.email ?: "No Email",
+                text = currentUser?.email ?: t("No Email", "ಇಮೇಲ್ ಇಲ್ಲ"),
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold
             )
             Text(
-                text = "Role: $userRole",
+                text = "${t("Role", "ಪಾತ್ರ")}: $userRole",
                 fontSize = 16.sp,
                 color = Color.Gray
             )
@@ -101,9 +105,10 @@ fun ProfileScreen(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text("Settings", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                    Text(t("Settings", "ಸೆಟ್ಟಿಂಗ್‌ಗಳು"), fontWeight = FontWeight.Bold, fontSize = 18.sp)
                     Spacer(modifier = Modifier.height(16.dp))
                     
+                    // Dark Mode Toggle
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
@@ -115,11 +120,30 @@ fun ProfileScreen(
                                 contentDescription = null
                             )
                             Spacer(modifier = Modifier.width(12.dp))
-                            Text("Dark Theme")
+                            Text(t("Dark Theme", "ಡಾರ್ಕ್ ಥೀಮ್"))
                         }
                         Switch(
                             checked = themeViewModel.isDarkTheme,
                             onCheckedChange = { themeViewModel.toggleTheme() }
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Language Toggle
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Language, contentDescription = null)
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(t("Language (ಕನ್ನಡ)", "ಭಾಷೆ (English)"))
+                        }
+                        Switch(
+                            checked = languageViewModel.isKannada,
+                            onCheckedChange = { languageViewModel.toggleLanguage() }
                         )
                     }
                 }
@@ -141,7 +165,7 @@ fun ProfileScreen(
             ) {
                 Icon(Icons.Default.Logout, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("LOGOUT", fontWeight = FontWeight.Bold)
+                Text(t("LOGOUT", "ಲಾಗ್ ಔಟ್"), fontWeight = FontWeight.Bold)
             }
         }
     }

@@ -58,6 +58,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.example.grama_vaxi.ui.screens.ProfileScreen
 import com.example.grama_vaxi.ui.screens.ThemeViewModel
 import com.example.grama_vaxi.ui.screens.SplashScreen
+import com.example.grama_vaxi.ui.screens.LanguageViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -65,6 +66,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             val themeViewModel: ThemeViewModel = viewModel()
+            val languageViewModel: LanguageViewModel = viewModel()
             GramaVaxiTheme(darkTheme = themeViewModel.isDarkTheme) {
                 val permissionLauncher = rememberLauncherForActivityResult(
                     contract = ActivityResultContracts.RequestPermission()
@@ -98,11 +100,16 @@ class MainActivity : ComponentActivity() {
                             if (error == null && snapshot != null && !snapshot.isEmpty) {
                                 val doc = snapshot.documents[0]
                                 val timestamp = doc.getLong("timestamp") ?: 0L
-                                // Only show if it's very recent (e.g. within last 30 seconds)
+                                val targetEmail = doc.getString("targetEmail")
+                                
+                                // Show if it's very recent AND either global OR specifically for this user
                                 if (System.currentTimeMillis() - timestamp < 30000) {
-                                    val title = doc.getString("title") ?: "New Update"
-                                    scope.launch {
-                                        snackbarHostState.showSnackbar(title)
+                                    val isForMe = targetEmail == null || targetEmail == auth.currentUser?.email
+                                    if (isForMe) {
+                                        val title = doc.getString("title") ?: "New Update"
+                                        scope.launch {
+                                            snackbarHostState.showSnackbar(title)
+                                        }
                                     }
                                 }
                             }
@@ -135,7 +142,7 @@ class MainActivity : ComponentActivity() {
                 LaunchedEffect(currentRoute, userRole) {
                     if (currentRoute == "loading" && userRole != null) {
                         val route = when (userRole) {
-                            "Vet" -> Screen.VetDashboard.route
+                            "Veterinary Officer" -> Screen.VetDashboard.route
                             "Admin" -> Screen.AdminDashboard.route
                             else -> Screen.Farmer.route
                         }
@@ -166,18 +173,21 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
                                 composable(Screen.Login.route) {
-                                    LoginScreen(onLoginSuccess = { role ->
-                                        userRole = role // Update local state immediately
-                                        val route = when (role) {
-                                            "Vet" -> Screen.VetDashboard.route
-                                            "Admin" -> Screen.AdminDashboard.route
-                                            else -> Screen.Farmer.route
+                                    LoginScreen(
+                                        languageViewModel = languageViewModel,
+                                        onLoginSuccess = { role ->
+                                            userRole = role // Update local state immediately
+                                            val route = when (role) {
+                                                "Veterinary Officer" -> Screen.VetDashboard.route
+                                                "Admin" -> Screen.AdminDashboard.route
+                                                else -> Screen.Farmer.route
+                                            }
+                                            navController.navigate(route) {
+                                                popUpTo(Screen.Login.route) { inclusive = true }
+                                                popUpTo(Screen.Home.route) { inclusive = true }
+                                            }
                                         }
-                                        navController.navigate(route) {
-                                            popUpTo(Screen.Login.route) { inclusive = true }
-                                            popUpTo(Screen.Home.route) { inclusive = true }
-                                        }
-                                    })
+                                    )
                                 }
                                 composable(Screen.Home.route) {
                                     HomeScreen(
@@ -193,6 +203,7 @@ class MainActivity : ComponentActivity() {
                                 composable(Screen.Farmer.route) {
                                     FarmerScreen(
                                         viewModel = viewModel,
+                                        languageViewModel = languageViewModel,
                                         onNavigateBack = { navController.popBackStack() },
                                         onAddAnimalClick = { navController.navigate(Screen.RegisterAnimal.route) },
                                         onReportDiseaseClick = { navController.navigate(Screen.ReportDisease.route) },
@@ -202,11 +213,13 @@ class MainActivity : ComponentActivity() {
                                 composable(Screen.RegisterAnimal.route) {
                                     RegisterAnimalScreen(
                                         viewModel = viewModel,
+                                        languageViewModel = languageViewModel,
                                         onNavigateBack = { navController.popBackStack() }
                                     )
                                 }
                                 composable(Screen.ReportDisease.route) {
                                     ReportDiseaseScreen(
+                                        languageViewModel = languageViewModel,
                                         onNavigateBack = { navController.popBackStack() }
                                     )
                                 }
@@ -225,6 +238,7 @@ class MainActivity : ComponentActivity() {
                                 composable(Screen.Profile.route) {
                                     ProfileScreen(
                                         themeViewModel = themeViewModel,
+                                        languageViewModel = languageViewModel,
                                         onNavigateBack = { navController.popBackStack() },
                                         onLogout = {
                                             navController.navigate(Screen.Login.route) {

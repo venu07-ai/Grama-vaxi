@@ -20,22 +20,31 @@ import com.google.firebase.firestore.FirebaseFirestore
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ReportDiseaseScreen(onNavigateBack: () -> Unit) {
+fun ReportDiseaseScreen(
+    languageViewModel: LanguageViewModel,
+    onNavigateBack: () -> Unit
+) {
     var description by remember { mutableStateOf("") }
     var location by remember { mutableStateOf("") }
     var submitted by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
 
+    val t = languageViewModel::t
     val firestore = FirebaseFirestore.getInstance()
     val auth = FirebaseAuth.getInstance()
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Report Sick Animal (ಅನಾರೋಗ್ಯ ವರದಿ)", fontWeight = FontWeight.Bold) },
+                title = { Text(t("Report Sick Animal", "ಅನಾರೋಗ್ಯ ವರದಿ"), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    TextButton(onClick = { languageViewModel.toggleLanguage() }) {
+                        Text(if (languageViewModel.isKannada) "EN" else "ಕನ್ನಡ", color = OrangeMain, fontWeight = FontWeight.Bold)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
@@ -46,11 +55,11 @@ fun ReportDiseaseScreen(onNavigateBack: () -> Unit) {
         if (submitted) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Report Sent Successfully!", fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                    Text("The vet will be notified. (ಪಶುವೈದ್ಯರಿಗೆ ತಿಳಿಸಲಾಗಿದೆ)", color = Color.Gray)
+                    Text(t("Report Sent Successfully!", "ವರದಿ ಯಶಸ್ವಿಯಾಗಿ ಕಳುಹಿಸಲಾಗಿದೆ!"), fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                    Text(t("The vet will be notified.", "ಪಶುವೈದ್ಯರಿಗೆ ತಿಳಿಸಲಾಗಿದೆ."), color = Color.Gray)
                     Spacer(modifier = Modifier.height(24.dp))
                     Button(onClick = onNavigateBack, colors = ButtonDefaults.buttonColors(containerColor = OrangeMain)) {
-                        Text("BACK TO HOME")
+                        Text(t("BACK TO HOME", "ಮುಖಪುಟಕ್ಕೆ ಹಿಂತಿರುಗಿ"))
                     }
                 }
             }
@@ -62,7 +71,7 @@ fun ReportDiseaseScreen(onNavigateBack: () -> Unit) {
                     .padding(24.dp)
             ) {
                 Text(
-                    "Describe the symptoms (ಲಕ್ಷಣಗಳನ್ನು ವಿವರಿಸಿ)",
+                    t("Describe the symptoms", "ಲಕ್ಷಣಗಳನ್ನು ವಿವರಿಸಿ"),
                     fontWeight = FontWeight.SemiBold,
                     color = Color.Gray
                 )
@@ -73,14 +82,14 @@ fun ReportDiseaseScreen(onNavigateBack: () -> Unit) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(150.dp),
-                    placeholder = { Text("Example: My sheep is not eating...") },
+                    placeholder = { Text(t("Example: My sheep is not eating...", "ಉದಾಹರಣೆ: ನನ್ನ ಕುರಿ ಆಹಾರ ಸೇವಿಸುತ್ತಿಲ್ಲ...")) },
                     shape = RoundedCornerShape(12.dp)
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
 
                 Text(
-                    "Your Location (ನಿಮ್ಮ ಸ್ಥಳ)",
+                    t("Your Location", "ನಿಮ್ಮ ಸ್ಥಳ"),
                     fontWeight = FontWeight.SemiBold,
                     color = Color.Gray
                 )
@@ -89,7 +98,7 @@ fun ReportDiseaseScreen(onNavigateBack: () -> Unit) {
                     value = location,
                     onValueChange = { location = it },
                     modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text("Temple Square, Village A") },
+                    placeholder = { Text(t("Temple Square, Village A", "ದೇವಸ್ಥಾನದ ಆವರಣ, ಗ್ರಾಮ ಎ")) },
                     shape = RoundedCornerShape(12.dp)
                 )
 
@@ -128,7 +137,7 @@ fun ReportDiseaseScreen(onNavigateBack: () -> Unit) {
                     } else {
                         Icon(Icons.Default.Send, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("REPORT EMERGENCY (ತುರ್ತು ವರದಿ)", fontWeight = FontWeight.Bold)
+                        Text(t("REPORT EMERGENCY", "ತುರ್ತು ವರದಿ ಮಾಡಿ"), fontWeight = FontWeight.Bold)
                     }
                 }
             }
