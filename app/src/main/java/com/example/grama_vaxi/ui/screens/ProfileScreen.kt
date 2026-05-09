@@ -2,15 +2,14 @@ package com.example.grama_vaxi.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.DarkMode
-import androidx.compose.material.icons.filled.LightMode
-import androidx.compose.material.icons.filled.Logout
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.grama_vaxi.ui.theme.OrangeMain
@@ -35,7 +35,12 @@ fun ProfileScreen(
     val auth = FirebaseAuth.getInstance()
     val firestore = FirebaseFirestore.getInstance()
     val currentUser = auth.currentUser
-    var userRole by remember { mutableStateOf("Loading...") }
+    
+    var userRole by remember { mutableStateOf("Farmer") }
+    var name by remember { mutableStateOf("") }
+    var phone by remember { mutableStateOf("") }
+    var village by remember { mutableStateOf("") }
+    var isSaving by remember { mutableStateOf(false) }
 
     val t = languageViewModel::t
 
@@ -44,6 +49,9 @@ fun ProfileScreen(
             firestore.collection("users").document(currentUser.uid).get()
                 .addOnSuccessListener { doc ->
                     userRole = doc.getString("role") ?: "Farmer"
+                    name = doc.getString("name") ?: ""
+                    phone = doc.getString("phone") ?: ""
+                    village = doc.getString("village") ?: ""
                 }
         }
     }
@@ -64,9 +72,12 @@ fun ProfileScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(24.dp),
+                .padding(horizontal = 24.dp)
+                .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            Spacer(modifier = Modifier.height(24.dp))
+            
             // Profile Icon
             Box(
                 modifier = Modifier
@@ -96,7 +107,82 @@ fun ProfileScreen(
                 color = Color.Gray
             )
 
-            Spacer(modifier = Modifier.height(40.dp))
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Editable Fields Card
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(t("Personal Details", "ವೈಯಕ್ತಿಕ ವಿವರಗಳು"), fontWeight = FontWeight.Bold, fontSize = 18.sp, color = OrangeMain)
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    OutlinedTextField(
+                        value = name,
+                        onValueChange = { name = it },
+                        label = { Text(t("Full Name", "ಪೂರ್ಣ ಹೆಸರು")) },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        singleLine = true
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    OutlinedTextField(
+                        value = phone,
+                        onValueChange = { phone = it },
+                        label = { Text(t("Phone Number", "ದೂರವಾಣಿ ಸಂಖ್ಯೆ")) },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                        singleLine = true
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    OutlinedTextField(
+                        value = village,
+                        onValueChange = { village = it },
+                        label = { Text(t("Village/Address", "ಗ್ರಾಮ/ವಿಳಾಸ")) },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        singleLine = true
+                    )
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    Button(
+                        onClick = {
+                            if (currentUser != null) {
+                                isSaving = true
+                                val updates = hashMapOf(
+                                    "name" to name,
+                                    "phone" to phone,
+                                    "village" to village
+                                )
+                                firestore.collection("users").document(currentUser.uid).update(updates as Map<String, Any>)
+                                    .addOnSuccessListener { isSaving = false }
+                                    .addOnFailureListener { isSaving = false }
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = OrangeMain),
+                        enabled = !isSaving
+                    ) {
+                        if (isSaving) {
+                            CircularProgressIndicator(color = Color.White, modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                        } else {
+                            Text(t("SAVE PROFILE", "ಪ್ರೊಫೈಲ್ ಉಳಿಸಿ"), fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
 
             // Settings Card
             Card(
@@ -167,6 +253,8 @@ fun ProfileScreen(
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(t("LOGOUT", "ಲಾಗ್ ಔಟ್"), fontWeight = FontWeight.Bold)
             }
+            
+            Spacer(modifier = Modifier.height(40.dp))
         }
     }
 }
